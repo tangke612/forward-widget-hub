@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Forward Widget Hub
 
-## Getting Started
+A self-hosted platform for uploading and hosting [ForwardWidget](https://github.com/user/ForwardWidgets) modules. Upload your `.js` widget files and get a shareable `.fwd` subscription link for [Forward App](https://apps.apple.com/app/forward/id1490153115).
 
-First, run the development server:
+## Features
+
+- Drag-and-drop upload for `.js` widget modules
+- Automatic `WidgetMetadata` parsing and validation
+- Token-based management (no registration required)
+- `.fwd` subscription link generation for Forward App
+- Support for encrypted modules (FWENC1 format)
+- SQLite database + local file storage
+- Single Docker container deployment
+- Dark/light theme support
+
+## Quick Start
+
+### Docker (Recommended)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker run -d \
+  -p 3000:3000 \
+  -v ./data:/data \
+  -e SITE_URL=https://your-domain.com \
+  forward-widget-hub
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Docker Compose
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+git clone https://github.com/user/forward-widget-hub.git
+cd forward-widget-hub
+docker compose up -d
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Development
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open http://localhost:3000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment Variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SITE_URL` | `http://localhost:3000` | Public URL for generating links |
+| `DATA_DIR` | `./data` | Directory for SQLite database and module files |
+| `PORT` | `3000` | Server port |
 
-## Deploy on Vercel
+## How It Works
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Upload**: Drag `.js` widget files to the upload zone
+2. **Get Token**: First upload generates a management token - save it!
+3. **Share**: Copy the `.fwd` subscription link
+4. **Import**: Add the link in Forward App to import your widgets
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## API
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/upload` | Upload widget files |
+| `GET` | `/api/collections/:slug` | Get collection info |
+| `GET` | `/api/collections/:slug/fwd` | Get `.fwd` index for Forward App |
+| `GET` | `/api/modules/:id/raw` | Download raw module file |
+| `GET` | `/api/manage?token=xxx` | List your collections |
+| `DELETE` | `/api/modules/:id?token=xxx` | Delete a module |
+
+## Data Storage
+
+All data is stored in the `/data` volume:
+
+```
+/data/
+├── db.sqlite          # SQLite database
+└── modules/
+    └── <collection>/
+        └── widget.js  # Module files
+```
+
+Backup: just copy the `/data` directory.
+
+## Security
+
+- Tokens are SHA-256 hashed before storage
+- Rate limiting: 10 auth requests/min per IP, 15-min lockout after 5 failures
+- Module files are served as-is (no server-side execution)
+- WidgetMetadata is parsed with regex, never eval'd
+
+## License
+
+MIT
