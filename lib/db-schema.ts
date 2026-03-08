@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS modules (
   description TEXT DEFAULT '',
   version TEXT,
   author TEXT,
+  required_version TEXT,
   file_size INTEGER DEFAULT 0,
   is_encrypted INTEGER DEFAULT 0,
   created_at INTEGER DEFAULT (unixepoch()),
@@ -40,3 +41,14 @@ CREATE INDEX IF NOT EXISTS idx_collections_slug ON collections(slug);
 CREATE INDEX IF NOT EXISTS idx_modules_collection_id ON modules(collection_id);
 CREATE INDEX IF NOT EXISTS idx_users_token_prefix ON users(token_prefix);
 `;
+
+// Migration for existing databases that lack the required_version column
+export const MIGRATIONS = [
+  `ALTER TABLE modules ADD COLUMN required_version TEXT;`,
+];
+
+export function applyMigrations(exec: (sql: string) => void) {
+  for (const sql of MIGRATIONS) {
+    try { exec(sql); } catch { /* column already exists */ }
+  }
+}

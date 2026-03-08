@@ -108,8 +108,8 @@ async function downloadAndStoreWidget(
   const meta = encrypted ? null : parseWidgetMetadata(dl.buffer.toString("utf8"));
   const moduleId = nanoid();
   await db.prepare(
-    `INSERT INTO modules (id, collection_id, filename, widget_id, title, description, version, author, file_size, is_encrypted)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO modules (id, collection_id, filename, widget_id, title, description, version, author, required_version, file_size, is_encrypted)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     moduleId, collectionId, dl.filename,
     widget.id || meta?.id || null,
@@ -117,6 +117,7 @@ async function downloadAndStoreWidget(
     widget.description || meta?.description || "",
     widget.version || meta?.version || null,
     widget.author || meta?.author || null,
+    widget.requiredVersion || meta?.requiredVersion || null,
     dl.buffer.length, encrypted ? 1 : 0
   );
   await store.save(collectionId, dl.filename, dl.buffer);
@@ -224,9 +225,9 @@ export async function POST(request: NextRequest) {
       const fwdUrl = `${siteUrl}/api/collections/${slug}/fwd`;
       const moduleId = nanoid();
       await db.prepare(
-        `INSERT INTO modules (id, collection_id, filename, widget_id, title, description, version, author, file_size, is_encrypted)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(moduleId, collectionId, filename, meta?.id || null, meta?.title || filename.replace(".js", ""), meta?.description || "", meta?.version || null, meta?.author || null, buffer.length, encrypted ? 1 : 0);
+        `INSERT INTO modules (id, collection_id, filename, widget_id, title, description, version, author, required_version, file_size, is_encrypted)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(moduleId, collectionId, filename, meta?.id || null, meta?.title || filename.replace(".js", ""), meta?.description || "", meta?.version || null, meta?.author || null, meta?.requiredVersion || null, buffer.length, encrypted ? 1 : 0);
       await store.save(collectionId, filename, buffer);
 
       return NextResponse.json({
@@ -297,9 +298,9 @@ export async function POST(request: NextRequest) {
             const meta = encrypted ? null : parseWidgetMetadata(buffer.toString("utf8"));
             const moduleId = nanoid();
             await db.prepare(
-              `INSERT INTO modules (id, collection_id, filename, widget_id, title, description, version, author, file_size, is_encrypted)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-            ).run(moduleId, collectionId, file.name, meta?.id || null, meta?.title || file.name.replace(".js", ""), meta?.description || "", meta?.version || null, meta?.author || null, file.size, encrypted ? 1 : 0);
+              `INSERT INTO modules (id, collection_id, filename, widget_id, title, description, version, author, required_version, file_size, is_encrypted)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            ).run(moduleId, collectionId, file.name, meta?.id || null, meta?.title || file.name.replace(".js", ""), meta?.description || "", meta?.version || null, meta?.author || null, meta?.requiredVersion || null, file.size, encrypted ? 1 : 0);
             await store.save(collectionId, file.name, buffer);
             allModules.push({ id: moduleId, filename: file.name, title: meta?.title || file.name, version: meta?.version, encrypted });
           }
@@ -335,9 +336,9 @@ export async function POST(request: NextRequest) {
       const filename = file.name;
 
       await db.prepare(
-        `INSERT INTO modules (id, collection_id, filename, widget_id, title, description, version, author, file_size, is_encrypted)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(moduleId, collectionId, filename, meta?.id || null, meta?.title || filename.replace(".js", ""), meta?.description || "", meta?.version || null, meta?.author || null, file.size, encrypted ? 1 : 0);
+        `INSERT INTO modules (id, collection_id, filename, widget_id, title, description, version, author, required_version, file_size, is_encrypted)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(moduleId, collectionId, filename, meta?.id || null, meta?.title || filename.replace(".js", ""), meta?.description || "", meta?.version || null, meta?.author || null, meta?.requiredVersion || null, file.size, encrypted ? 1 : 0);
 
       await store.save(collectionId, filename, buffer);
       allModules.push({ id: moduleId, filename, title: meta?.title || filename, version: meta?.version, encrypted });

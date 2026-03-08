@@ -1,5 +1,5 @@
 import type { Db, DbStatement } from "../backend";
-import { SCHEMA } from "../db-schema";
+import { SCHEMA, applyMigrations } from "../db-schema";
 
 export async function createSqliteDb(): Promise<Db> {
   const Database = (await import("better-sqlite3")).default;
@@ -15,6 +15,7 @@ export async function createSqliteDb(): Promise<Db> {
   sqliteDb.pragma("journal_mode = WAL");
   sqliteDb.pragma("foreign_keys = ON");
   sqliteDb.exec(SCHEMA);
+  applyMigrations((sql) => sqliteDb.exec(sql));
 
   return {
     prepare(sql: string): DbStatement {
