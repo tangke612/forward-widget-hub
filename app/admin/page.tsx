@@ -10,6 +10,8 @@ import {
   FileCode,
   FileJson,
   Lock,
+  UploadCloud,
+  RefreshCw,
 } from "lucide-react";
 
 interface Module {
@@ -20,6 +22,7 @@ interface Module {
   author: string;
   file_size: number;
   is_encrypted: number;
+  source_url: string;
 }
 
 interface Collection {
@@ -29,6 +32,7 @@ interface Collection {
   description: string;
   icon_url: string;
   user_id: string;
+  source_url: string;
   created_at: number;
   updated_at: number;
   modules: Module[];
@@ -45,6 +49,9 @@ export default function AdminPage() {
   const [collectionsLoading, setCollectionsLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null);
+  const [replacingModuleId, setReplacingModuleId] = useState<string | null>(null);
+  const [syncingModuleId, setSyncingModuleId] = useState<string | null>(null);
+  const [syncingColId, setSyncingColId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/auth")
@@ -97,6 +104,84 @@ export default function AdminPage() {
       setPasswordError("网络错误");
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleReplaceModule = async (mod: Module, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReplacingModuleId(mod.id);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/admin/modules/${mod.id}`, { method: "PUT", body: formData });
+      if (res.ok) fetchCollections();
+    } finally {
+      setReplacingModuleId(null);
+      e.target.value = "";
+    }
+  };
+
+  const handleSyncModule = async (mod: Module) => {
+    if (!mod.source_url) return;
+    if (!confirm(`确定从源地址同步「${mod.title || mod.filename}」？`)) return;
+    setSyncingModuleId(mod.id);
+    try {
+      const res = await fetch(mod.source_url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const fname = mod.source_url.split("/").pop() || mod.filename;
+      const file = new File([blob], fname, { type: "application/javascript" });
+      const formData = new FormData();
+      formData.append("file", file);
+      const putRes = await fetch(`/api/admin/modules/${mod.id}`, { method: "PUT", body: formData });
+      if (putRes.ok) fetchCollections();
+      else alert("同步失败");
+    } catch (e) {
+      alert(`同步失败: ${(e as Error).message}`);
+    } finally {
+      setSyncingModuleId(null);
+    }
+  };
+
+  const handleSyncCollection = async (col: Collection) => {
+    if (!col.source_url) return;
+    if (!confirm(`确定从源地址重新同步合集「${col.title}」？`)) return;
+    setSyncingColId(col.id);
+    try {
+      const res = await fetch(col.source_url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const fwd = JSON.parse(text);
+      if (!fwd.widgets || !Array.isArray(fwd.widgets)) throw new Error("Invalid .fwd");
+      const downloadedFiles: File[] = [];
+      const widgetMetas: object[] = [];
+      for (const widget of fwd.widgets) {
+        let fname = widget.url.split("/").pop() || "widget.js";
+        if (!fname.endsWith(".js")) fname += ".js";
+        const dlRes = await fetch(widget.url);
+        if (!dlRes.ok) throw new Error(`Failed to download ${fname}`);
+        const blob = await dlRes.blob();
+        downloadedFiles.push(new File([blob], fname, { type: "application/javascript" }));
+        widgetMetas.push({ id: widget.id, title: widget.title, description: widget.description, version: widget.version, author: widget.author, requiredVersion: widget.requiredVersion, source_url: widget.url });
+      }
+      const formData = new FormData();
+      downloadedFiles.forEach((f) => formData.append("files", f));
+      formData.append("token", "__admin__");
+      formData.append("collection_id", col.id);
+      formData.append("sync", "true");
+      formData.append("source_url", col.source_url);
+      formData.append("widget_meta", JSON.stringify(widgetMetas));
+      if (fwd.title) formData.append("title", fwd.title);
+      if (fwd.description) formData.append("description", fwd.description);
+      if (fwd.icon) formData.append("icon", fwd.icon);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      if (uploadRes.ok) fetchCollections();
+      else { const d = await uploadRes.json(); alert(d.error || "同步失败"); }
+    } catch (e) {
+      alert(`同步失败: ${(e as Error).message}`);
+    } finally {
+      setSyncingColId(null);
     }
   };
 
@@ -289,10 +374,20 @@ export default function AdminPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md mr-1">
                     {col.modules.length} 个模块
                   </span>
+                  {col.source_url && (
+                    <button
+                      onClick={() => handleSyncCollection(col)}
+                      disabled={syncingColId === col.id}
+                      className="p-1.5 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
+                      title="从源地址同步"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${syncingColId === col.id ? "animate-spin" : ""}`} />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDeleteCollection(col)}
                     disabled={deletingId === col.id}
@@ -343,18 +438,35 @@ export default function AdminPage() {
                       {mod.author ? ` · ${mod.author}` : ""}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleDeleteModule(col.id, mod)}
-                    disabled={deletingModuleId === mod.id}
-                    className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100 flex-shrink-0"
-                    title="删除模块"
-                  >
-                    {deletingModuleId === mod.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <input type="file" accept=".js" className="hidden" id={`admin-replace-${mod.id}`} onChange={(e) => handleReplaceModule(mod, e)} />
+                    <button
+                      disabled={replacingModuleId === mod.id}
+                      onClick={() => document.getElementById(`admin-replace-${mod.id}`)?.click()}
+                      className="p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
+                      title="更新文件"
+                    >
+                      {replacingModuleId === mod.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                    </button>
+                    {mod.source_url && (
+                      <button
+                        disabled={syncingModuleId === mod.id}
+                        onClick={() => handleSyncModule(mod)}
+                        className="p-1.5 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="从源地址同步"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${syncingModuleId === mod.id ? "animate-spin" : ""}`} />
+                      </button>
                     )}
-                  </button>
+                    <button
+                      onClick={() => handleDeleteModule(col.id, mod)}
+                      disabled={deletingModuleId === mod.id}
+                      className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      title="删除模块"
+                    >
+                      {deletingModuleId === mod.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               ))}
               {col.modules.length === 0 && (

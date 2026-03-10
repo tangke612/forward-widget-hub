@@ -9,6 +9,7 @@ interface CollectionRow {
   description: string;
   icon_url: string;
   user_id: string;
+  source_url: string;
   created_at: number;
   updated_at: number;
 }
@@ -22,6 +23,7 @@ interface ModuleRow {
   author: string;
   file_size: number;
   is_encrypted: number;
+  source_url: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -32,13 +34,13 @@ export async function GET(request: NextRequest) {
 
   const collections = await db
     .prepare(
-      "SELECT id, slug, title, description, icon_url, user_id, created_at, updated_at FROM collections ORDER BY updated_at DESC"
+      "SELECT id, slug, title, description, icon_url, user_id, source_url, created_at, updated_at FROM collections ORDER BY updated_at DESC"
     )
     .all<CollectionRow>();
 
   const modules = await db
     .prepare(
-      "SELECT id, collection_id, filename, title, version, author, file_size, is_encrypted FROM modules ORDER BY created_at"
+      "SELECT id, collection_id, filename, title, version, author, file_size, is_encrypted, source_url FROM modules ORDER BY created_at"
     )
     .all<ModuleRow>();
 
