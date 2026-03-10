@@ -12,6 +12,9 @@ import {
   Lock,
   UploadCloud,
   RefreshCw,
+  Copy,
+  Check,
+  Key,
 } from "lucide-react";
 
 interface Module {
@@ -36,6 +39,19 @@ interface Collection {
   created_at: number;
   updated_at: number;
   modules: Module[];
+}
+
+function InlineCopy({ text, title }: { text: string; title?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+      className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${copied ? "bg-green-500 text-white" : "text-slate-300 hover:text-indigo-500 hover:bg-indigo-50"}`}
+      title={title ?? (copied ? "已复制" : "复制链接")}
+    >
+      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+    </button>
+  );
 }
 
 export default function AdminPage() {
@@ -404,6 +420,14 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* FWD URL */}
+            <div className="px-6 py-2 bg-indigo-50/40 border-b border-slate-100 flex items-center gap-2">
+              <Key className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+              <span className="text-xs text-indigo-600 font-medium flex-shrink-0">订阅链接</span>
+              <input type="text" readOnly value={`${typeof window !== "undefined" ? window.location.origin : ""}/api/collections/${col.slug}/fwd`} className="bg-transparent text-xs font-mono text-indigo-500 flex-1 min-w-0 focus:outline-none truncate" />
+              <InlineCopy text={`${typeof window !== "undefined" ? window.location.origin : ""}/api/collections/${col.slug}/fwd`} title="复制订阅链接" />
+            </div>
+
             {/* Modules */}
             <div className="divide-y divide-slate-100">
               {col.modules.map((mod) => (
@@ -439,6 +463,7 @@ export default function AdminPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    <InlineCopy text={`${typeof window !== "undefined" ? window.location.origin : ""}/api/modules/${mod.id}/raw`} title="复制模块链接" />
                     <input type="file" accept=".js" className="hidden" id={`admin-replace-${mod.id}`} onChange={(e) => handleReplaceModule(mod, e)} />
                     <button
                       disabled={replacingModuleId === mod.id}
