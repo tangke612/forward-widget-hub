@@ -35,7 +35,8 @@ async function downloadRemoteJs(url: string): Promise<{ buffer: Buffer; filename
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length > MAX_FILE_SIZE) throw new Error("Remote file exceeds 5MB limit");
     const urlPath = new URL(url).pathname;
-    const filename = urlPath.split("/").pop() || "widget.js";
+    let filename = urlPath.split("/").pop() || "widget.js";
+    if (!filename.endsWith(".js")) filename += ".js";
     return { buffer: buf, filename };
   } finally {
     clearTimeout(timeout);
@@ -64,10 +65,11 @@ async function downloadRemoteFile(url: string): Promise<{ buffer: Buffer; filena
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length > MAX_FILE_SIZE) throw new Error("Remote file exceeds 5MB limit");
     const urlPath = new URL(url).pathname;
-    const filename = urlPath.split("/").pop() || "widget.js";
+    let filename = urlPath.split("/").pop() || "widget.js";
     const isFwd = filename.endsWith(".fwd") || (() => {
       try { const j = JSON.parse(buf.toString("utf8")); return Array.isArray(j.widgets); } catch { return false; }
     })();
+    if (!isFwd && !filename.endsWith(".js")) filename += ".js";
     return { buffer: buf, filename, isFwd };
   } finally {
     clearTimeout(timeout);
