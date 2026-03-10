@@ -847,7 +847,7 @@ function StandaloneModuleRow({ module: mod, collection, token, onDeleteModule, o
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0">
         <input type="file" accept=".js" className="hidden" id={`replace-s-${mod.id}`} onChange={handleReplace} />
         <button
           disabled={replacingId === mod.id}
@@ -1089,7 +1089,7 @@ function CollectionSection({ collection, token, onDeleteModule, onDeleteCollecti
                 <p className="text-xs text-slate-400">{mod.filename} · {mod.file_size < 1024 ? `${mod.file_size} B` : `${(mod.file_size / 1024).toFixed(1)} KB`}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <input type="file" accept=".js" className="hidden" id={`replace-${mod.id}`} onChange={(e) => handleReplace(mod.id, e)} />
               <button
                 disabled={replacingId === mod.id}
