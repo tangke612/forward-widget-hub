@@ -21,7 +21,9 @@ export function createOssStore(): Store {
   return {
     async save(collectionId, filename, content) {
       const key = ossKey(collectionId, filename);
-      await client.put(key, Buffer.from(content));
+      await client.put(key, Buffer.from(content), {
+        headers: { "Cache-Control": "no-cache" },
+      });
     },
     async read(collectionId, filename) {
       const key = ossKey(collectionId, filename);

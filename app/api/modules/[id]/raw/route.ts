@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendDb, getBackendStore } from "@/lib/backend";
 
-interface ModuleRow { id: string; collection_id: string; filename: string; is_encrypted: number; }
+interface ModuleRow { id: string; collection_id: string; filename: string; is_encrypted: number; updated_at: number | null; }
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function GET(
 
   const { id } = await params;
   const db = await getBackendDb();
-  const mod = await db.prepare("SELECT id, collection_id, filename, is_encrypted FROM modules WHERE id = ?").get(id) as ModuleRow | undefined;
+  const mod = await db.prepare("SELECT id, collection_id, filename, is_encrypted, updated_at FROM modules WHERE id = ?").get(id) as ModuleRow | undefined;
   if (!mod) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const store = await getBackendStore();
@@ -22,7 +22,8 @@ export async function GET(
   // If store supports CDN URLs, redirect there
   const cdnUrl = store.getUrl?.(mod.collection_id, mod.filename);
   if (cdnUrl) {
-    return NextResponse.redirect(cdnUrl, 302);
+    const versionedUrl = mod.updated_at ? `${cdnUrl}?v=${mod.updated_at}` : cdnUrl;
+    return NextResponse.redirect(versionedUrl, 302);
   }
 
   const content = await store.read(mod.collection_id, mod.filename);

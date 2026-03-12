@@ -4,7 +4,7 @@ import { getBackendDb, getBackendStore } from "@/lib/backend";
 interface ModuleRow {
   id: string; collection_id: string; filename: string; widget_id: string | null; title: string | null;
   description: string | null; version: string | null; author: string | null;
-  required_version: string | null; file_size: number;
+  required_version: string | null; file_size: number; updated_at: number | null;
 }
 
 export async function GET(
@@ -22,7 +22,7 @@ export async function GET(
   if (!collection) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const modules = await db.prepare(
-    "SELECT id, collection_id, filename, widget_id, title, description, version, author, required_version, file_size FROM modules WHERE collection_id = ? ORDER BY created_at"
+    "SELECT id, collection_id, filename, widget_id, title, description, version, author, required_version, file_size, updated_at FROM modules WHERE collection_id = ? ORDER BY created_at"
   ).all(collection.id) as ModuleRow[];
 
   const store = await getBackendStore();
@@ -41,7 +41,10 @@ export async function GET(
       requiredVersion: m.required_version || "0.0.1",
       version: m.version || "1.0.0",
       author: m.author || "",
-      url: store.getUrl?.(m.collection_id, m.filename) || `${siteUrl}/api/modules/${m.id}/raw`,
+      url: (() => {
+        const base = store.getUrl?.(m.collection_id, m.filename) || `${siteUrl}/api/modules/${m.id}/raw`;
+        return m.updated_at ? `${base}?v=${m.updated_at}` : base;
+      })(),
     })),
   };
 
