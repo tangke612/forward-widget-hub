@@ -28,12 +28,15 @@ export function parseWidgetMetadata(content: string): WidgetMeta | null {
   }
   if (endIdx === -1) return null;
 
-  let objStr = content.slice(startIdx, endIdx + 1);
+  const metaBlock = content.slice(startIdx, endIdx + 1);
+  let objStr = metaBlock;
   objStr = objStr.replace(/\/\/.*$/gm, "");
   objStr = objStr.replace(/\/\*[\s\S]*?\*\//g, "");
   objStr = objStr.replace(/,\s*([}\]])/g, "$1");
   objStr = objStr.replace(/(?<=[{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '"$1":');
   objStr = objStr.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
+  // Replace bare identifiers (variable refs like `wv`) with null so JSON.parse succeeds
+  objStr = objStr.replace(/:\s*([a-zA-Z_$][a-zA-Z0-9_$.]*)\s*([,}\]])/g, ': null$2');
 
   try {
     const parsed = JSON.parse(objStr);
@@ -48,14 +51,18 @@ export function parseWidgetMetadata(content: string): WidgetMeta | null {
       requiredVersion: parsed.requiredVersion,
     };
   } catch {
-    return extractFieldsFallback(content);
+    return extractFieldsFallback(metaBlock);
   }
+}
+
+function decodeUnicodeEscapes(str: string): string {
+  return str.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
 
 function extractFieldsFallback(content: string): WidgetMeta | null {
   const extract = (field: string): string | undefined => {
     const match = content.match(new RegExp(`${field}\\s*:\\s*["']([^"']+)["']`));
-    return match?.[1];
+    return match?.[1] ? decodeUnicodeEscapes(match[1]) : undefined;
   };
   const id = extract("id");
   const title = extract("title");
