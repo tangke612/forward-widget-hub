@@ -18,4 +18,3 @@ bucket_name = "forward-widget-hub-storage"
 [vars]
 BACKEND = "cloudflare"
 
- }]
