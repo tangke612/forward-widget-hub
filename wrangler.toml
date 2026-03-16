@@ -8,8 +8,8 @@ directory = ".open-next/assets"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "forward-widget-hub-db"
-database_id = "5d048312-8c21-4ca2-a8f6-dde24a8e7318"
+database_name = "forward"
+database_id = "7108aabb-140f-4b34-8ba1-7fc4b20c7284"
 
 [[r2_buckets]]
 binding = "STORAGE"
@@ -17,3 +17,5 @@ bucket_name = "forward-widget-hub-storage"
 
 [vars]
 BACKEND = "cloudflare"
+
+ }]
